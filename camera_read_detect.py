@@ -5,7 +5,7 @@ import time
 
 option = {
 	'model': 'cfg/yolo.cfg',
-	'load': 'bin/yolo.weights',
+	'load': 'bin/yolov2.weights',
 	'threshold': 0.3,
 }
 
