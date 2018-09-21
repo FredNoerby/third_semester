@@ -11,7 +11,7 @@ option = {
 
 tfnet = TFNet(option)
 
-capture = cv2.VideoCapture(1)
+capture = cv2.VideoCapture(0)
 colors = [tuple(255 * np.random.random(3)) for i in range(5)]
 
 while (capture.isOpened()):
