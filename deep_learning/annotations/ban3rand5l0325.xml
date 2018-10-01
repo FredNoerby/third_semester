@@ -1,0 +1,22 @@
+<annotation>
+  <folder>captures_test</folder>
+  <filename>ban3rand5l0325.png</filename>
+  <segmented>0</segmented>
+  <size>
+    <width>640</width>
+    <height>480</height>
+    <depth>3</depth>
+  </size>
+  <object>
+    <name>Banana</name>
+    <pose>Unspecified</pose>
+    <truncated>0</truncated>
+    <difficult>0</difficult>
+    <bndbox>
+      <xmin>33</xmin>
+      <ymin>109</ymin>
+      <xmax>184</xmax>
+      <ymax>227</ymax>
+    </bndbox>
+  </object>
+</annotation>
