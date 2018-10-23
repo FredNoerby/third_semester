@@ -4,10 +4,10 @@ import random
 
 class Environment:
 
-    def __init__(self, banana_pose):
-        self.banana_pose = banana_pose
-        self.reward_dict = {'move': -1,'illegal': -5 , 'guess_pos': 10, 'guess_neg': -10}
-        self.sensor_test = {0: np.array([0, 20, 20, 100, 40]), 0: np.array([1, 20, 20, 40, 100])}
+    def __init__(self):
+        self.banana_pose = 1
+        self.reward_dict = {'move': -1, 'illegal': -5, 'guess_pos': 10, 'guess_neg': -10}
+        self.sensor_test = {0: np.array([0, 20, 20, 100, 40]), 1: np.array([1, 20, 20, 40, 100])}
         self.move_dict = {}
         self.observation_space = np.array([0, 0, 0, 0, 0])
         self.action_space = ActionSpace(4)
@@ -25,7 +25,7 @@ class Environment:
             self.observation_space = self.sensor_test[1]
 
     def reset(self):
-        n = random.randint(0,1)
+        n = random.randint(0, 1)
         if n == 0:
             self.observation_space = self.sensor_test[0]
             self._sense()
@@ -33,6 +33,11 @@ class Environment:
         else:
             self.observation_space = self.sensor_test[1]
             self._sense()
+
+        if random.randint(1, 2) == 2:
+            self.banana_pose = 2
+
+        return self.observation_space
 
     def step(self, action):
         done = False
@@ -65,6 +70,11 @@ class Environment:
 
         return self.observation_space, reward, done, info
 
+    def render(self, mode='human'):
+        # Placeholder for rendering
+        print(mode)
+
+
 class ActionSpace:
     def __init__(self, n):
         self.n = n
@@ -72,5 +82,4 @@ class ActionSpace:
     def sample(self):
 
         return rand_sample
-
 
