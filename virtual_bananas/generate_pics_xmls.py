@@ -12,6 +12,10 @@ background = input('\nPlease paste full background path:\n')
 # Load image of environment background
 background = Image.open(background)
 
+count = int(input("\nWhat's the count?\n"))
+
+max_offset = int(input("\nWhat's the max offset?\n"))
+
 rgb_list = []
 filelist = os.listdir(banana_folder) 
 for f in filelist: # filelist[:] makes a copy of filelist. 
@@ -48,7 +52,7 @@ for n in rgb_list:
     mask.putdata(new_data)
 
     # Create tuple used as offset
-    offset = (random.randint(-100,101), random.randint(-100,101))
+    offset = (random.randint(-max_offset,max_offset+1), random.randint(-max_offset,max_offset+1))
 
     # Copy background
     back = copy(background)
@@ -57,7 +61,7 @@ for n in rgb_list:
     # Third parameter. It indicates a mask that will be used to paste the image. 
     # If you pass a image with transparency, then the alpha channel is used as mask.
     back.paste(img, offset, mask)
-    file_name = 'generated'+ file_number + 'jpg'
+    file_name = 'generated'+ file_number + str(count) + '.jpg'
     back.save('images/' + file_name, 'JPEG')
 
     with open (banana_folder + 'roi' + file_number + 'txt', 'rt') as in_file:
@@ -79,7 +83,7 @@ for n in rgb_list:
     if ymax > 480:
         ymax = 480
         truncated = 1
-    with open('annotations/xmls/generated' + file_number + 'xml', 'w') as xml_file: 
+    with open('annotations/xmls/generated' + file_number + str(count) + '.xml', 'w') as xml_file: 
         xml_file.write("""<annotation>
     <folder>pictures</folder>
     <filename>{}</filename>
@@ -106,3 +110,6 @@ for n in rgb_list:
         </bndbox>
     </object>
 </annotation>""".format(file_name, 'images/' + file_name, truncated, str(xmin), str(ymin), str(xmax), str(ymax)))
+        count += 1
+
+print("Done. Count is", count)
