@@ -1,11 +1,16 @@
 from PIL import Image
 import os
 import random
+from copy import deepcopy as copy
 
 
 banana_folder = input('Please paste folder path:\n')
 if not(banana_folder.endswith('/')):
     banana_folder += '/'
+
+background = input('\nPlease paste full background path:\n')
+# Load image of environment background
+background = Image.open(background)
 
 rgb_list = []
 filelist = os.listdir(banana_folder) 
@@ -21,9 +26,6 @@ for n in rgb_list:
 
     # Load image of rendered banana
     img = Image.open(banana_folder + n)
-    # Load image of environment background
-    # TODO: Have user pick background
-    background = Image.open('background_stools/stool1h1347.png')
     # Load image of mask
     mask = Image.open(banana_folder + 'mask' + file_number + 'png')
     # Convert mask image to also have an 'alpha'-channel (Opacity)
@@ -48,12 +50,15 @@ for n in rgb_list:
     # Create tuple used as offset
     offset = (random.randint(-100,101), random.randint(-100,101))
 
+    # Copy background
+    back = copy(background)
+
     # Paste the transparent banana picture onto the background
     # Third parameter. It indicates a mask that will be used to paste the image. 
     # If you pass a image with transparency, then the alpha channel is used as mask.
-    background.paste(img, offset, mask)
+    back.paste(img, offset, mask)
     file_name = 'generated'+ file_number + 'jpg'
-    background.save('images/' + file_name, 'JPEG')
+    back.save('images/' + file_name, 'JPEG')
 
     with open (banana_folder + 'roi' + file_number + 'txt', 'rt') as in_file:
         xmin, ymin, xmax, ymax = in_file.read().split()
