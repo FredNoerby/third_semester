@@ -62,10 +62,23 @@ for n in rgb_list:
 
     with open (banana_folder + 'roi' + file_number + 'txt', 'rt') as in_file:
         xmin, ymin, xmax, ymax = in_file.read().split()
+    truncated = 0
     xmin = int(xmin) + offset[0]
+    if xmin < 0:
+        xmin = 0
+        truncated = 1
     ymin = int(ymin) + offset[1]
+    if ymin < 0:
+        ymin = 0
+        truncated = 1
     xmax = int(xmax) + offset[0]
+    if xmax > 640:
+        xmax = 640
+        truncated = 1
     ymax = int(ymax) + offset[1]
+    if ymax > 480:
+        ymax = 480
+        truncated = 1
     with open('annotations/xmls/generated' + file_number + 'xml', 'w') as xml_file: 
         xml_file.write("""<annotation>
     <folder>pictures</folder>
@@ -83,7 +96,7 @@ for n in rgb_list:
     <object>
         <name>Banana</name>
         <pose>Unspecified</pose>
-        <truncated>0</truncated>
+        <truncated>{}</truncated>
         <difficult>0</difficult>
         <bndbox>
             <xmin>{}</xmin>
@@ -92,4 +105,4 @@ for n in rgb_list:
             <ymax>{}</ymax>
         </bndbox>
     </object>
-</annotation>""".format(file_name, 'images/' + file_name, str(xmin), str(ymin), str(xmax), str(ymax)))
+</annotation>""".format(file_name, 'images/' + file_name, truncated, str(xmin), str(ymin), str(xmax), str(ymax)))
