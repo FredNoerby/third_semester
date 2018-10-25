@@ -4,3 +4,5 @@ bin/
 cfg/
 darkflow/
 deep_learning/images/
+virtual_bananas/annotations/xmls/
+virtual_bananas/images/
