@@ -22,7 +22,7 @@ from keras import backend as K
 # -- constants
 ENV = EnvironmentB.EnvironmentB()
 
-RUN_TIME = 5
+RUN_TIME = 60
 THREADS = 8
 OPTIMIZERS = 2
 THREAD_DELAY = 0.001
@@ -74,7 +74,7 @@ class Brain:
         self.default_graph = tf.get_default_graph()
 
 
-        # self.default_graph.finalize()  # comment out to allow for saving of model and weights
+        self.default_graph.finalize()  # comment out to allow for saving of model and weights
 
     def _build_model(self):
 
@@ -339,7 +339,7 @@ for e in envs:
 time.sleep(RUN_TIME)
 
 for i in range(20):
-    print("TEST" * 30)
+    print("TEST" * 50)
 
 for e in envs:
     e.stop()
@@ -355,4 +355,3 @@ print("Training finished")
 brain.saving()
 
 env_test.run()
-
