@@ -1,5 +1,5 @@
 import numpy as np
-import Environment
+import EnvironmentB
 
 from keras.models import Sequential
 from keras.layers import Dense, Activation, Flatten
@@ -12,7 +12,7 @@ from rl.memory import SequentialMemory
 ENV_NAME = "DQN"
 
 # Get the environment and extract the number of actions.
-env = Environment.Environment()
+env = EnvironmentB.EnvironmentB()
 # np.random.seed(123)
 # env.seed(123)
 nb_actions = env.action_space.n
@@ -42,7 +42,7 @@ dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 # Okay, now it's time to learn something! We visualize the training here for show, but this
 # slows down training quite a lot. You can always safely abort the training prematurely using
 # Ctrl + C.
-dqn.fit(env, nb_steps=5000, verbose=2)
+dqn.fit(env, nb_steps=3000, verbose=2)
 
 # After training is done, we save the final weights.
 dqn.save_weights('dqn_{}_weights.h5f'.format(ENV_NAME), overwrite=True)
