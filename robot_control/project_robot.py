@@ -1,5 +1,8 @@
 import urx
 from random import randint
+import numpy as np
+import tensorflow as tf
+import cv2
 
 class ProjectRobot:
     """ Class to represent robot with project-specific functions.
@@ -16,6 +19,7 @@ class ProjectRobot:
         self.robot.set_payload(0.5, (0,0,0))
         self.accelaration = acc
         self.velocity = vel
+        self.graph_def = None
         self.waypoint = [-1.6616261926776854, -2.516756425648164, -1.7162176543532885, -2.035364287737379, -3.275768284901913, 0.021001491282445117]
         self.waypoint2 = [-1.2883411718305444, -2.4434948198856086, -2.0563346358086174, -1.3185130145848347, -2.7683894322679112, 0.020524097286495235]
         self.poses =[  # Low camera poses
@@ -40,6 +44,55 @@ class ProjectRobot:
         else:
             print("Robot not in known position")
             self.current_pose = self.robot.getj()
+
+
+    def init_object_detection(self, frozen_graph_path):
+        # Read the graph.
+        with tf.gfile.FastGFile(frozen_graph_path, 'rb') as f:
+            self.graph_def = tf.GraphDef()
+            self.graph_def.ParseFromString(f.read())
+
+
+    def detect_image(self, img):
+
+        if self.graph_def:
+            with tf.Session() as sess:
+                # Restore session
+                sess.graph.as_default()
+                tf.import_graph_def(self.graph_def, name='')
+
+                rows = img.shape[0]
+                cols = img.shape[1]
+                inp = cv2.resize(img, (300, 300))
+                inp = inp[:, :, [2, 1, 0]]  # BGR2RGB
+
+                # Run the model
+                out = sess.run([sess.graph.get_tensor_by_name('num_detections:0'),
+                            sess.graph.get_tensor_by_name('detection_scores:0'),
+                            sess.graph.get_tensor_by_name('detection_boxes:0'),
+                            sess.graph.get_tensor_by_name('detection_classes:0')],
+                            feed_dict={'image_tensor:0': inp.reshape(1, inp.shape[0], inp.shape[1], 3)})
+
+                detected = []
+                # Visualize detected bounding boxes.
+                num_detections = int(out[0][0])
+                for i in range(num_detections):
+                    classId = int(out[3][0][i])
+                    score = float(out[1][0][i])
+                    bbox = [float(v) for v in out[2][0][i]]
+                
+                    if score > 0.9:
+                        x_min = bbox[1] * cols
+                        y_min = bbox[0] * rows
+                        x_max = bbox[3] * cols
+                        y_max = bbox[2] * rows
+                        cv2.rectangle(img, (int(x_min), int(y_min)), (int(x_max), int(y_max)), (125, 255, 51), thickness=2)
+                        cv2.putText(img, 'Banana', (int(x_min), int(y_min)), cv2.FONT_HERSHEY_DUPLEX, 1, (125, 255, 51), 1)
+                        detected.append([classId, score, [x_min, y_min, x_max, y_max]])
+                return img, detected
+
+        else:
+            print("Use init_object_detection() to load frozen graph first.")
 
 
     def close(self):
