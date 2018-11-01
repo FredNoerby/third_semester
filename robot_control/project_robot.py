@@ -4,6 +4,7 @@ import numpy as np
 import tensorflow as tf
 import cv2
 
+
 class ProjectRobot:
     """ Class to represent robot with project-specific functions.
     
@@ -37,13 +38,26 @@ class ProjectRobot:
                     [-1.2203962092554805, -2.122418234345, -1.909830426470517, -3.6303420959249757, -1.4712470328850218, 0.2974175140885674],
                     [-1.413329472624783, -2.2560878693111555, -1.5387472369052009, -4.089874237420497, -1.6194137098810062, -1.2970245992454874],
                     [-1.438694215664488, -2.309812088558476, -1.5104802980886154, -1.216825303519952, -4.666121972248885, 0.18324775341575922]]
+        self.direction_map = {0: {'N': 5, 'S': 'illegal', 'E': 1, 'W': 'illegal'}, 
+                              1: {'N': 6, 'S': 'illegal', 'E': 2, 'W': 0},
+                              2: {'N': 7, 'S': 'illegal', 'E': 3, 'W': 1}, 
+                              3: {'N': 8, 'S': 'illegal', 'E': 4, 'W': 2},
+                              4: {'N': 8, 'S': 'illegal', 'E': 'illegal', 'W': 3}, 
+                              5: {'N': 9, 'S': 0, 'E': 6, 'W': 'illegal'},
+                              6: {'N': 10, 'S': 1, 'E': 7, 'W': 5}, 
+                              7: {'N': 11, 'S': 2, 'E': 8, 'W': 6}, 
+                              8: {'N': 11, 'S': 3, 'E': 'illegal', 'W': 7},
+                              9: {'N': 'illegal', 'S': 5, 'E': 10, 'W': 'illegal'}, 
+                              10: {'N': 'illegal', 'S': 6, 'E': 11, 'W': 9}, 
+                              11: {'N': 'illegal', 'S': 7, 'E': 'illegal', 'W': 10}}
+
         _ = input("Go to start position? (y/n)\n")
         if _.lower() == 'y':
             self.robot.movej(self.poses[10], acc=self.accelaration, vel=self.velocity)
-            self.current_pose = self.poses[10]
+            self.current_pose = 10
         else:
             print("Robot not in known position")
-            self.current_pose = self.robot.getj()
+            self.current_pose = None
 
 
     def init_object_detection(self, frozen_graph_path):
@@ -102,20 +116,20 @@ class ProjectRobot:
     def go_to(self, pose_number):
 
         if -1 < pose_number < 12:
-            if (self.current_pose == self.poses[0] and pose_number == 4) or (self.current_pose == self.poses[4] and pose_number == 0): 
+            if (self.current_pose == 0 and pose_number == 4) or (self.current_pose == 4 and pose_number == 0): 
                 self.robot.movej(self.waypoint2, acc=self.accelaration, vel=self.velocity)
 
-            elif (self.current_pose == self.poses[1] and pose_number == 4) or (self.current_pose == self.poses[4] and pose_number == 1):
+            elif (self.current_pose == 1 and pose_number == 4) or (self.current_pose == 4 and pose_number == 1):
                 self.robot.movej(self.waypoint, acc=self.accelaration, vel=self.velocity)
 
-            elif (self.current_pose == self.poses[5] and pose_number == 4) or (self.current_pose == self.poses[4] and pose_number == 5):
+            elif (self.current_pose == 5 and pose_number == 4) or (self.current_pose == 4 and pose_number == 5):
                 self.robot.movej(self.waypoint2, acc=self.accelaration, vel=self.velocity)
 
-            elif (self.current_pose == self.poses[8] and pose_number == 0) or (self.current_pose == self.poses[0] and pose_number == 8):
+            elif (self.current_pose == 8 and pose_number == 0) or (self.current_pose == 0 and pose_number == 8):
                 self.robot.movej(self.waypoint2, acc=self.accelaration, vel=self.velocity)
 
             self.robot.movej(self.poses[pose_number], acc=self.accelaration, vel=self.velocity)
-            self.current_pose = self.poses[pose_number]
+            self.current_pose = pose_number
 
         else:
             raise ValueError("Wrong pose number. Expected number from 0 to 11.")
@@ -124,6 +138,21 @@ class ProjectRobot:
     def go_to_random(self):
         pos = randint(0,11)
         self.go_to(pos)
+
+
+    def go_direction(self, direction):
+        """ Takes a direction (N, S, E, W) and moves the robot that way if possible
+        """
+        if direction.upper() == 'N' or direction.upper() == 'S' or direction.upper() == 'E' or direction.upper() == 'W':
+            position = self.direction_map[self.current_pose][direction.upper()]
+            if position == 'illegal':
+                return 'illegal'
+            else:
+                self.go_to(position)
+                return 'moved ' + direction.upper()
+
+        else:
+            raise ValueError("Directon not recognized.")
 
 
 
