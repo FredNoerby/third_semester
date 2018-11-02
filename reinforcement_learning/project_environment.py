@@ -159,7 +159,14 @@ class ProjectEnvironment:
 
         else:
             # TODO MOVE ROBOT
-            pass
+            move_to = self.robot.go_direction(action_map[action])
+            if move_to == 'illegal':
+                print("[def _move] Made illegal move:", action_map[action], "from", self.observation_space[0])
+                return move_to
+            else:
+                print("[def _move] Made move:", action_map[action], "from", self.observation_space[0], "to", move_to)
+                self.observation_space[0] = move_to
+                return 'move'
 
 
 
