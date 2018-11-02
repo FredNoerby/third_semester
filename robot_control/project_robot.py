@@ -149,7 +149,7 @@ class ProjectRobot:
                 return 'illegal'
             else:
                 self.go_to(position)
-                return 'moved ' + direction.upper()
+                return position
 
         else:
             raise ValueError("Directon not recognized.")
