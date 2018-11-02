@@ -22,25 +22,25 @@ from keras import backend as K
 # -- constants
 ENV = EnvironmentB.EnvironmentB()
 
-RUN_TIME = 60
-THREADS = 8
-OPTIMIZERS = 2
+RUN_TIME = 10
+THREADS = 64
+OPTIMIZERS = 16
 THREAD_DELAY = 0.001
 
 GAMMA = 0.99
 
-N_STEP_RETURN = 8
+N_STEP_RETURN = 16
 GAMMA_N = GAMMA ** N_STEP_RETURN
 
-EPS_START = 0.4
+EPS_START = 1.0
 EPS_STOP = .15
-EPS_STEPS = 75000
+EPS_STEPS = 750000
 
 MIN_BATCH = 32
 LEARNING_RATE = 5e-3
 
 LOSS_V = .5  # v loss coefficient
-LOSS_ENTROPY = .01  # entropy coefficient
+LOSS_ENTROPY = .5  # entropy coefficient
 
 saver_toggle = 0
 loader_toggle = 0
@@ -183,7 +183,7 @@ class Brain:
                 include_optimizer=True
             )
 
-            #self.model.save('model_saved.h5f', overwrite=True, include_optimizer=True)
+            # self.model.save('model_saved.h5f', overwrite=True, include_optimizer=True)
             # self.saver.save(tf.Session(), 'my-model', global_step=999)
 
             print("Model Saved...")
@@ -211,6 +211,7 @@ class Agent:
     def act(self, s):
         eps = self.getEpsilon()
         global frames
+        # print("Epsilon for thread {} is {}".format(threading.get_ident(),eps))
         frames = frames + 1
 
         if random.random() < eps:
@@ -276,6 +277,7 @@ class Environment(threading.Thread):
 
         R = 0
         while True:
+
             time.sleep(THREAD_DELAY)  # yield
 
             # if self.render: self.env.render()
@@ -304,6 +306,69 @@ class Environment(threading.Thread):
         self.stop_signal = True
 
 
+Full_stop = 0
+n_tests = 11
+runs = 0
+
+
+class EnvironmentRunner():
+    stop_signal = False
+
+    def __init__(self, render=False, eps_start=EPS_START, eps_end=EPS_STOP, eps_steps=EPS_STEPS):
+
+        self.render = render
+        self.env = ENV
+        self.agent = Agent(eps_start, eps_end, eps_steps)
+
+    def counter(self):
+        global Full_stop
+        if Full_stop < n_tests:
+            Full_stop += 1
+            print("Full_stop count = {}".format(Full_stop))
+
+    def runEpisode(self):
+        EnvironmentRunner.counter(self)
+
+        if Full_stop < n_tests:
+            s = self.env.reset()
+
+            R = 0
+            while not self.stop_signal or (Full_stop >= n_tests):
+
+                time.sleep(THREAD_DELAY)  # yield
+
+                # if self.render: self.env.render()
+
+                a = self.agent.act(s)
+                s_, r, done, info = self.env.step(a)
+
+                if done:  # terminal state
+                    s_ = None
+
+                self.agent.train(s, a, r, s_)
+
+                s = s_
+                R += r
+
+                if done or self.stop_signal or (Full_stop >= n_tests):
+                    break
+
+            print("Runner - n threads / Total R: {} / {}".format(threading.active_count(), R))
+
+    def run(self):
+        while not self.stop_signal or (Full_stop >= n_tests):
+            global runs
+            runs += 1
+            if runs < 20:
+                print("Runs: {}".format(runs))
+            self.runEpisode()
+            if Full_stop >= n_tests:
+                return
+
+    def stop(self):
+        self.stop_signal = True
+
+
 # ---------
 class Optimizer(threading.Thread):
     stop_signal = False
@@ -320,10 +385,12 @@ class Optimizer(threading.Thread):
 
 
 # -- main
-env_test = Environment(eps_start=0., eps_end=0)
+env_test = EnvironmentRunner(eps_start=0., eps_end=0)
 NUM_STATE = env_test.env.observation_space.shape[0]
 NUM_ACTIONS = env_test.env.action_space.n
 NONE_STATE = np.zeros(NUM_STATE)
+print("NUM_STATE and NUM ACTIONS: {} / {}".format(NUM_STATE, NUM_ACTIONS))
+
 
 brain = Brain()  # brain is global in A3C
 
@@ -353,5 +420,13 @@ for o in opts:
 
 print("Training finished")
 brain.saving()
+print("pre-run")
+while True:
+    if Full_stop < n_tests:
+        env_test.run()
+    else:
+        break
+print("pre-timer")
+print("pre-stop")
 
-env_test.run()
+print("done")
