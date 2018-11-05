@@ -12,6 +12,8 @@
 import numpy as np
 import tensorflow as tf
 
+import matplotlib.pyplot as plt
+
 import time, random, threading
 import EnvironmentB
 
@@ -22,28 +24,37 @@ from keras import backend as K
 # -- constants
 ENV = EnvironmentB.EnvironmentB()
 
-RUN_TIME = 10
-THREADS = 64
-OPTIMIZERS = 16
-THREAD_DELAY = 0.001
+RUN_TIME = 220  # 30 seconds for cartpole
+THREADS = 2  # (n Agents) 8 Due to 4 physical CPU cores in author PC
+OPTIMIZERS = 2  # 2
+THREAD_DELAY = 0.001  # 0.001
 
-GAMMA = 0.99
+GAMMA = 0.99  # 0.99
 
-N_STEP_RETURN = 16
+N_STEP_RETURN = 8  # 8
 GAMMA_N = GAMMA ** N_STEP_RETURN
 
-EPS_START = 1.0
-EPS_STOP = .15
-EPS_STEPS = 750000
+EPS_START = 1.0  # 0.40
+EPS_STOP = .4  # 0.15
+EPS_STEPS = 375000  # 75000
 
-MIN_BATCH = 32
-LEARNING_RATE = 5e-3
+MIN_BATCH = 24  # 32  (24 seems like a good candidate)
+LEARNING_RATE = 5e-7  # 5e-5 (5e-7 seems like a good candidate)
 
-LOSS_V = .5  # v loss coefficient
-LOSS_ENTROPY = .5  # entropy coefficient
+LOSS_V = .5  # v loss coefficient 0.5
+LOSS_ENTROPY = .1  # entropy coefficient 0.01
 
+# Self made values for improving and testing script:
+# ------------------
 saver_toggle = 0
 loader_toggle = 0
+
+score_counter = 0
+scores = []
+acc_scores = 0
+eps_current = 0
+eps_list = []
+# ------------------
 
 
 # ---------
@@ -111,7 +122,9 @@ class Brain:
 
         loss_total = tf.reduce_mean(loss_policy + loss_value + entropy)
 
-        optimizer = tf.train.RMSPropOptimizer(LEARNING_RATE, decay=.99)
+        # optimizer = tf.train.GradientDescentOptimizer(LEARNING_RATE)
+        optimizer = tf.train.AdamOptimizer(LEARNING_RATE)
+        # optimizer = tf.train.RMSPropOptimizer(LEARNING_RATE, decay=.99)
         minimize = optimizer.minimize(loss_total)
 
         #self.saver = tf.train.Saver([s_t, a_t, r_t, minimize])
@@ -210,6 +223,8 @@ class Agent:
 
     def act(self, s):
         eps = self.getEpsilon()
+        global eps_current
+        eps_current = eps
         global frames
         # print("Epsilon for thread {} is {}".format(threading.get_ident(),eps))
         frames = frames + 1
@@ -294,9 +309,17 @@ class Environment(threading.Thread):
             R += r
 
             if done or self.stop_signal:
+                global score_counter
+                global acc_scores
+                acc_scores += R
+                score_counter += 1
+                if score_counter % 200 == 0:
+                    eps_list.append(eps_current)
+                    scores.append(acc_scores)
+
                 break
 
-        print("n threads / Total R: {} / {}".format(threading.active_count(), R))
+        print("Time/Tot.Time/Nthreads/Total R: {:.1f} / {} / {} / {}".format(time.clock(), RUN_TIME, threading.active_count(), R))
 
     def run(self):
         while not self.stop_signal:
@@ -328,6 +351,7 @@ class EnvironmentRunner():
 
     def runEpisode(self):
         EnvironmentRunner.counter(self)
+        step_counter = 0
 
         if Full_stop < n_tests:
             s = self.env.reset()
@@ -350,8 +374,14 @@ class EnvironmentRunner():
                 s = s_
                 R += r
 
+                step_counter += 1
+                if step_counter > 20:
+                    print("__Forced DONE__" * 5)
+                    done = True
+
                 if done or self.stop_signal or (Full_stop >= n_tests):
                     break
+
 
             print("Runner - n threads / Total R: {} / {}".format(threading.active_count(), R))
 
@@ -362,7 +392,7 @@ class EnvironmentRunner():
             if runs < 20:
                 print("Runs: {}".format(runs))
             self.runEpisode()
-            if Full_stop >= n_tests:
+            if Full_stop >= n_tests - 1:
                 return
 
     def stop(self):
@@ -406,7 +436,7 @@ for e in envs:
 time.sleep(RUN_TIME)
 
 for i in range(20):
-    print("TEST" * 50)
+    print("__TEST__" * 8)
 
 for e in envs:
     e.stop()
@@ -426,7 +456,16 @@ while True:
         env_test.run()
     else:
         break
-print("pre-timer")
-print("pre-stop")
+
+print("plotting scores and eps...")
+print("scores length = {}".format(len(scores)))
+# print(scores)
+
+fig = plt.figure()
+ax1 = fig.add_subplot(211)
+ax2 = fig.add_subplot(212)
+ax1.plot(eps_list, linestyle='--')
+ax2.plot(scores)
+plt.show()
 
 print("done")
