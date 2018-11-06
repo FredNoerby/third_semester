@@ -10,6 +10,7 @@ class ProjectEnvironment:
         self.move_dict = {}
         self.observation_space = np.array([0, 0, 0, 0, 0])
         self.action_space = ActionSpace(12)
+        self.history = []
         self.simulated = simulated
         if not self.simulated:
             if not ProjectRobot:
@@ -158,7 +159,6 @@ class ProjectEnvironment:
                 return 'move'
 
         else:
-            # TODO MOVE ROBOT
             move_to = self.robot.go_direction(action_map[action])
             if move_to == 'illegal':
                 print("[def _move] Made illegal move:", action_map[action], "from", self.observation_space[0])
@@ -193,6 +193,8 @@ class ProjectEnvironment:
                 self.observation_space[0] = self.robot.current_pose
                 self._sense()
         print("[def reset] Banana in position:", self.banana_pose)
+        hist_dict = {"banana_pose": self.banana_pose, "observations": [self.observation_space], "actions": [], "rewards": [], "done": []}
+        self.history.append(hist_dict)
         return self.observation_space
 
 
@@ -215,13 +217,16 @@ class ProjectEnvironment:
             raise ValueError("Action must be from 0 to 11.")
 
         info_placeholder = {}
-
+        self.history[-1]['observations'].append(self.observation_space)
+        self.history[-1]['actions'].append(action)
+        self.history[-1]['rewards'].append(reward)
+        self.history[-1]['done'].append(done)
         return self.observation_space, reward, done, info_placeholder
 
 
     def render(self, mode='human'):
         # Placeholder for rendering
-        print(mode)
+        pass
 
 
 
