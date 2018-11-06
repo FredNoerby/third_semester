@@ -4,7 +4,7 @@ import random
 
 class ProjectEnvironment:
 
-    def __init__(self, simulated=True, ProjectRobot=None, banana_pose=0):
+    def __init__(self, simulated=True, ProjectRobot=None, banana_pose=0, print_log=True):
         self.banana_pose = banana_pose
         self.reward_dict = {'move': -1, 'illegal': -5, 'guess_pos': 10, 'guess_neg': -10}
         self.move_dict = {}
@@ -12,6 +12,7 @@ class ProjectEnvironment:
         self.action_space = ActionSpace(12)
         self.history = []
         self.simulated = simulated
+        self.print_log = print_log
         if not self.simulated:
             if not ProjectRobot:
                 raise ValueError("Need ProjectRobot in non-simulated environment.")
@@ -136,7 +137,8 @@ class ProjectEnvironment:
             bbox = bbox.tolist()
             bbox = bbox[0]
             self.observation_space = [self.observation_space[0]] + bbox
-            print("[def _sense] Observation space:", self.observation_space)
+            if self.print_log:
+                print("[def _sense] Observation space:", self.observation_space)
         else:
             # TODO USE OBJECT DETECTOR
             # img, detected = self.robot.detect_image(frame)
@@ -151,20 +153,24 @@ class ProjectEnvironment:
         if self.simulated:
             move_to = self.direction_map[self.observation_space[0]][action_map[action]]
             if move_to == 'illegal':
-                print("[def _move] Made illegal move:", action_map[action], "from", self.observation_space[0])
+                if self.print_log:
+                    print("[def _move] Made illegal move:", action_map[action], "from", self.observation_space[0])
                 return move_to
             else:
-                print("[def _move] Made move:", action_map[action], "from", self.observation_space[0], "to", move_to)
+                if self.print_log:
+                    print("[def _move] Made move:", action_map[action], "from", self.observation_space[0], "to", move_to)
                 self.observation_space[0] = move_to
                 return 'move'
 
         else:
             move_to = self.robot.go_direction(action_map[action])
             if move_to == 'illegal':
-                print("[def _move] Made illegal move:", action_map[action], "from", self.observation_space[0])
+                if self.print_log:
+                    print("[def _move] Made illegal move:", action_map[action], "from", self.observation_space[0])
                 return move_to
             else:
-                print("[def _move] Made move:", action_map[action], "from", self.observation_space[0], "to", move_to)
+                if self.print_log:
+                    print("[def _move] Made move:", action_map[action], "from", self.observation_space[0], "to", move_to)
                 self.observation_space[0] = move_to
                 return 'move'
 
@@ -192,7 +198,8 @@ class ProjectEnvironment:
                 self.banana_pose = banana_pose
                 self.observation_space[0] = self.robot.current_pose
                 self._sense()
-        print("[def reset] Banana in position:", self.banana_pose)
+        if self.print_log:
+            print("[def reset] Banana in position:", self.banana_pose)
         hist_dict = {"banana_pose": self.banana_pose, "observations": [self.observation_space], "actions": [], "rewards": [], "done": []}
         self.history.append(hist_dict)
         return self.observation_space
@@ -206,10 +213,12 @@ class ProjectEnvironment:
             reward = self.reward_dict[rew]
         elif 3 < action < 12:
             if action - 4 == self.banana_pose:
-                print("[DONE] Made correct prediction: guessed", (action-4), ", banana position", self.banana_pose)
+                if self.print_log:
+                    print("[DONE] Made correct prediction: guessed", (action-4), ", banana position", self.banana_pose)
                 reward = self.reward_dict['guess_pos']
             else:
-                print("[DONE] Made wrong prediction: guessed", (action-4), ", banana position", self.banana_pose)
+                if self.print_log:
+                    print("[DONE] Made wrong prediction: guessed", (action-4), ", banana position", self.banana_pose)
                 reward = self.reward_dict['guess_neg']
             done = True
 
