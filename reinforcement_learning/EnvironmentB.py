@@ -6,7 +6,7 @@ class EnvironmentB:
 
     def __init__(self):
         self.banana_pose = 0
-        self.reward_dict = {'move': 0, 'illegal': -5, 'guess_pos': 10, 'guess_neg': -10}
+        self.reward_dict = {'move': - 0.001, 'illegal': - 0.1, 'guess_pos': 1, 'guess_neg': -1}
         self.sensor_test = [[np.array([20, 20, 100, 40]), np.array([20, 20, 40, 100])],
                             [np.array([20, 20, 40, 100]), np.array([20, 20, 100, 40])]]
         self.move_dict = {}
@@ -18,6 +18,7 @@ class EnvironmentB:
         for i in range(1, 5):
             self.observation_space[i] = self.sensor_test[self.observation_space[0]][self.banana_pose][i-1] \
                                         # + random.randint(-1, 1)
+        print("Sense = {}".format(self.observation_space))
 
 
     def _move(self, action):
