@@ -196,8 +196,9 @@ class ProjectEnvironment:
 
     def _sense(self):
         if self.simulated:
-            bbox = np.array(self.simulated_bboxs[self.banana_pose][self.observation_space[0]])
-            bbox = bbox + np.random.randn(1, 4)
+            mu = np.array(self.simulated_bboxs[self.banana_pose][self.observation_space[0]])
+            sigma = 50
+            bbox = sigma * np.random.randn(1, 4) + mu
             bbox = bbox.tolist()
             bbox = bbox[0]
             self.observation_space = [self.observation_space[0]] + bbox
