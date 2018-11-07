@@ -9,8 +9,6 @@ from rl.agents.dqn import DQNAgent
 from rl.policy import BoltzmannQPolicy
 from rl.memory import SequentialMemory
 
-import pickle
-
 ENV_NAME = "DQN"
 
 # Get the environment and extract the number of actions.
@@ -42,16 +40,16 @@ dqn = DQNAgent(model=model, nb_actions=nb_actions, memory=memory, nb_steps_warmu
 
 dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 
+# Uncomment to load weights
+#dqn.load_weights('sim_PE_{}_weights.h5f'.format(ENV_NAME))
+
 # Okay, now it's time to learn something! We visualize the training here for show, but this
 # slows down training quite a lot. You can always safely abort the training prematurely using
 # Ctrl + C.
 dqn.fit(env, nb_steps=300000, verbose=2)
 
 # After training is done, we save the final weights.
-dqn.save_weights('dqn_{}_weights.h5f'.format(ENV_NAME), overwrite=True)
+dqn.save_weights('sim_PE_{}_weights.h5f'.format(ENV_NAME), overwrite=True)
 
 # Finally, evaluate our algorithm for 5 episodes.
 dqn.test(env, nb_episodes=5)
-
-with open('dqn_sim_proj.pkl', 'wb') as handle:
-            pickle.dump(dqn, handle, protocol=pickle.HIGHEST_PROTOCOL)
