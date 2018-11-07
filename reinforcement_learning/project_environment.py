@@ -1,10 +1,13 @@
 import numpy as np
+import tensorflow as tf
 import random
+import cv2
+import time
 
 
 class ProjectEnvironment:
 
-    def __init__(self, simulated=True, ProjectRobot=None, banana_pose=0, print_log=True):
+    def __init__(self, simulated=True, ProjectRobot=None, banana_pose=0, frozen_graph_path=None, print_log=True, video_cap=0):
         self.banana_pose = banana_pose
         self.reward_dict = {'move': -1, 'illegal': -5, 'guess_pos': 10, 'guess_neg': -10}
         self.move_dict = {}
@@ -14,10 +17,12 @@ class ProjectEnvironment:
         self.simulated = simulated
         self.print_log = print_log
         if not self.simulated:
-            if not ProjectRobot:
-                raise ValueError("Need ProjectRobot in non-simulated environment.")
+            if not ProjectRobot or not frozen_graph_path:
+                raise ValueError("Need ProjectRobot and frozen_graph_path in non-simulated environment.")
             else:
                 self.robot = ProjectRobot
+                self.capture = cv2.VideoCapture(video_cap)
+                self._init_object_detection(frozen_graph_path)
         else:
             self.direction_map = {0: {'N': 5, 'S': 'illegal', 'E': 1, 'W': 'illegal'}, 
                                   1: {'N': 6, 'S': 'illegal', 'E': 2, 'W': 0},
@@ -129,6 +134,65 @@ class ProjectEnvironment:
                                         10: [246.6046905517578, 183.76637935638428, 481.27880096435547, 345.6130599975586], 
                                         11: [223.76007080078125, 126.72177314758301, 396.4906311035156, 378.724422454834]}}
 
+    def _init_object_detection(self, frozen_graph_path):
+        # Read the graph.
+        with tf.gfile.FastGFile(frozen_graph_path, 'rb') as f:
+            self.graph_def = tf.GraphDef()
+            self.graph_def.ParseFromString(f.read())
+        # Warm up camera
+        now = time.time()
+        while now + 1 > time.time():
+            ret, frame = self.capture.read()
+            cv2.imshow('Capture', frame)
+        cv2.destroyAllWindows()
+        
+
+    def detect_image(self):
+        now = time.time()
+        while now + 1 > time.time():
+            ret, img = self.capture.read()
+            cv2.imshow('Capture', img)
+        cv2.destroyAllWindows()
+
+        if self.graph_def:
+            with tf.Session() as sess:
+                # Restore session
+                sess.graph.as_default()
+                tf.import_graph_def(self.graph_def, name='')
+
+                rows = img.shape[0]
+                cols = img.shape[1]
+                inp = cv2.resize(img, (300, 300))
+                inp = inp[:, :, [2, 1, 0]]  # BGR2RGB
+
+                # Run the model
+                out = sess.run([sess.graph.get_tensor_by_name('num_detections:0'),
+                            sess.graph.get_tensor_by_name('detection_scores:0'),
+                            sess.graph.get_tensor_by_name('detection_boxes:0'),
+                            sess.graph.get_tensor_by_name('detection_classes:0')],
+                            feed_dict={'image_tensor:0': inp.reshape(1, inp.shape[0], inp.shape[1], 3)})
+
+                detected = []
+                # Visualize detected bounding boxes.
+                num_detections = int(out[0][0])
+                for i in range(num_detections):
+                    classId = int(out[3][0][i])
+                    score = float(out[1][0][i])
+                    bbox = [float(v) for v in out[2][0][i]]
+                
+                    if score > 0.9:
+                        x_min = bbox[1] * cols
+                        y_min = bbox[0] * rows
+                        x_max = bbox[3] * cols
+                        y_max = bbox[2] * rows
+                        cv2.rectangle(img, (int(x_min), int(y_min)), (int(x_max), int(y_max)), (125, 255, 51), thickness=2)
+                        cv2.putText(img, 'Banana', (int(x_min), int(y_min)), cv2.FONT_HERSHEY_DUPLEX, 1, (125, 255, 51), 1)
+                        detected.append([classId, score, [x_min, y_min, x_max, y_max]])
+                return img, detected
+
+        else:
+            print("Use init_object_detection() to load frozen graph first.")
+    
 
     def _sense(self):
         if self.simulated:
@@ -140,11 +204,12 @@ class ProjectEnvironment:
             if self.print_log:
                 print("[def _sense] Observation space:", self.observation_space)
         else:
-            # TODO USE OBJECT DETECTOR
-            # img, detected = self.robot.detect_image(frame)
-            # xmin, ymin = detected[0][2][0], detected[0][2][1]
-            # xmax, ymax = detected[0][2][2], detected[0][2][3]
-            pass
+            img, detected = self.detect_image()
+            xmin, ymin = detected[0][2][0], detected[0][2][1]
+            xmax, ymax = detected[0][2][2], detected[0][2][3]
+            self.observation_space = [self.observation_space[0]] + [xmin, ymin, xmax, ymax]
+            if self.print_log:
+                print("[def _sense] Observation space:", self.observation_space)
 
 
 
@@ -192,12 +257,16 @@ class ProjectEnvironment:
             self._sense()
 
         else:
-            if banana_pose == 'rand' or -1 > banana_pose or banana_pose > 8:
+            """if banana_pose == 'rand' or -1 > banana_pose or banana_pose > 8:
                 raise ValueError("Need correct banana pose in non-simulated environment.")
             else:
                 self.banana_pose = banana_pose
                 self.observation_space[0] = self.robot.current_pose
-                self._sense()
+                self._sense()"""
+            ba_p = int(input("**TYPE BANANA POSITION**\n"))
+            self.banana_pose = ba_p
+            self.observation_space[0] = self.robot.current_pose
+            self._sense()
         if self.print_log:
             print("[def reset] Banana in position:", self.banana_pose)
         hist_dict = {"banana_pose": self.banana_pose, "observations": [self.observation_space], "actions": [], "rewards": [], "done": []}
@@ -236,6 +305,13 @@ class ProjectEnvironment:
     def render(self, mode='human'):
         # Placeholder for rendering
         pass
+
+
+    def close(self):
+        if not self.simulated:
+            self.capture.release()
+            cv2.destroyAllWindows()
+            self.robot.close()
 
 
 
