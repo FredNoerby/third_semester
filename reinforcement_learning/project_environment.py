@@ -135,6 +135,8 @@ class ProjectEnvironment:
                                         11: [223.76007080078125, 126.72177314758301, 396.4906311035156, 378.724422454834]}}
 
     def _init_object_detection(self, frozen_graph_path):
+        """ Sets up object detection
+        """
         # Read the graph.
         with tf.gfile.FastGFile(frozen_graph_path, 'rb') as f:
             self.graph_def = tf.GraphDef()
@@ -148,6 +150,8 @@ class ProjectEnvironment:
         
 
     def detect_image(self):
+        """ Uses the camera and an object detector to get a detection 
+        """
         now = time.time()
         while now + 1 > time.time():
             ret, img = self.capture.read()
@@ -195,6 +199,8 @@ class ProjectEnvironment:
     
 
     def _sense(self):
+        """ Updates the bounding boxes 
+        """
         if self.simulated:
             mu = np.array(self.simulated_bboxs[self.banana_pose][self.observation_space[0]])
             sigma = 50
@@ -215,6 +221,8 @@ class ProjectEnvironment:
 
 
     def _move(self, action):
+        """ Moves robot or simulated position 
+        """
         action_map = {0: 'N', 1: 'S', 2: 'E', 3: 'W'}
         if self.simulated:
             move_to = self.direction_map[self.observation_space[0]][action_map[action]]
@@ -243,6 +251,8 @@ class ProjectEnvironment:
 
 
     def reset(self, banana_pose='rand', robot_position='rand'):
+        """ Resets environment
+        """
         if self.simulated:
             if banana_pose == 'rand':
                 self.banana_pose = random.randint(0, 7)
@@ -258,12 +268,6 @@ class ProjectEnvironment:
             self._sense()
 
         else:
-            """if banana_pose == 'rand' or -1 > banana_pose or banana_pose > 8:
-                raise ValueError("Need correct banana pose in non-simulated environment.")
-            else:
-                self.banana_pose = banana_pose
-                self.observation_space[0] = self.robot.current_pose
-                self._sense()"""
             ba_p = int(input("**TYPE BANANA POSITION**\n"))
             self.banana_pose = ba_p
             self.observation_space[0] = self.robot.current_pose
@@ -276,6 +280,8 @@ class ProjectEnvironment:
 
 
     def step(self, action):
+        """ Takes a step based on an action
+        """
         done = False
         if -1 < action < 4:
             rew = self._move(action)
