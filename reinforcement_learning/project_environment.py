@@ -7,10 +7,9 @@ import time
 
 class ProjectEnvironment:
 
-    def __init__(self, simulated=True, ProjectRobot=None, banana_pose=0, frozen_graph_path=None, print_log=True, video_cap=0):
+    def __init__(self, simulated=True, ProjectRobot=None, banana_pose=0, frozen_graph_path=None, print_log=True, video_cap=0, noise_sigma=30):
         self.banana_pose = banana_pose
         self.reward_dict = {'move': -1, 'illegal': -5, 'guess_pos': 10, 'guess_neg': -10}
-        self.move_dict = {}
         self.observation_space = np.array([0, 0, 0, 0, 0])
         self.action_space = ActionSpace(12)
         self.history = []
@@ -24,6 +23,7 @@ class ProjectEnvironment:
                 self.capture = cv2.VideoCapture(video_cap)
                 self._init_object_detection(frozen_graph_path)
         else:
+            self.sigma = noise_sigma
             self.direction_map = {0: {'N': 5, 'S': 'illegal', 'E': 1, 'W': 'illegal'}, 
                                   1: {'N': 6, 'S': 'illegal', 'E': 2, 'W': 0},
                                   2: {'N': 7, 'S': 'illegal', 'E': 3, 'W': 1}, 
@@ -203,8 +203,7 @@ class ProjectEnvironment:
         """
         if self.simulated:
             mu = np.array(self.simulated_bboxs[self.banana_pose][self.observation_space[0]])
-            sigma = 50
-            bbox = sigma * np.random.randn(1, 4) + mu
+            bbox = self.sigma * np.random.randn(1, 4) + mu
             bbox = bbox.tolist()
             bbox = bbox[0]
             self.observation_space = [self.observation_space[0]] + bbox
