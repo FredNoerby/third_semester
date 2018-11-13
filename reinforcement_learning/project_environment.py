@@ -8,7 +8,7 @@ import time
 
 class ProjectEnvironment:
 
-    def __init__(self, simulated=True, ProjectRobot=None, pickled_bbox_dict='reinforcement_learning/standard_bboxs.pkl', frozen_graph_path=None, banana_pose=0, print_log=True, video_cap=0, noise_sigma=30):
+    def __init__(self, simulated=True, ProjectRobot=None, pickled_bbox_dict='reinforcement_learning/bboxsGroundTruth.pkl', frozen_graph_path=None, banana_pose=0, print_log=True, video_cap=0, noise_sigma=30):
         self.banana_pose = banana_pose
         self.reward_dict = {'move': -1, 'illegal': -5, 'guess_pos': 10, 'guess_neg': -10}
         self.observation_space = np.array([0, 0, 0, 0, 0])
@@ -25,6 +25,18 @@ class ProjectEnvironment:
                 self._init_object_detection(frozen_graph_path)
         else:
             self.sigma = noise_sigma
+            self.cache = {0: None, 
+                          1: None,
+                          2: None, 
+                          3: None,
+                          4: None, 
+                          5: None,
+                          6: None, 
+                          7: None, 
+                          8: None,
+                          9: None,
+                          10: None,
+                          11: None}
             self.direction_map = {0: {'N': 5, 'S': 'illegal', 'E': 1, 'W': 'illegal'}, 
                                   1: {'N': 6, 'S': 'illegal', 'E': 2, 'W': 0},
                                   2: {'N': 7, 'S': 'illegal', 'E': 3, 'W': 1}, 
@@ -110,11 +122,21 @@ class ProjectEnvironment:
         """ Updates the bounding boxes 
         """
         if self.simulated:
-            mu = np.array(self.simulated_bboxs[self.banana_pose][self.observation_space[0]])
-            bbox = self.sigma * np.random.randn(1, 4) + mu
-            bbox = bbox.tolist()
-            bbox = bbox[0]
+            # If camera has already detected here reuse simulated detection
+            if self.cache[self.observation_space[0]]:
+                bbox = self.cache[self.observation_space[0]]
+            # Else generate one
+            else:
+                mu = np.array(self.simulated_bboxs[self.banana_pose][self.observation_space[0]])
+                x_offset = self.sigma * np.random.randn(1)
+                y_offset = self.sigma * np.random.randn(1)
+                bbox = [x_offset[0] + mu[0], y_offset[0] + mu[1], x_offset[0] + mu[2], y_offset[0] + mu[3]]
+                self.cache[self.observation_space[0]] = bbox
+
+            # print("Cache:")
+            # print(self.cache)
             self.observation_space = [self.observation_space[0]] + bbox
+            
             if self.print_log:
                 print("[def _sense] Observation space:", self.observation_space)
         else:
@@ -161,6 +183,19 @@ class ProjectEnvironment:
         """ Resets environment
         """
         if self.simulated:
+            # Clear cache of bounding boxes
+            self.cache = {0: None, 
+                          1: None,
+                          2: None, 
+                          3: None,
+                          4: None, 
+                          5: None,
+                          6: None, 
+                          7: None, 
+                          8: None,
+                          9: None,
+                          10: None,
+                          11: None}
             if banana_pose == 'rand':
                 self.banana_pose = random.randint(0, 7)
             elif -1 < banana_pose < 8:
@@ -181,7 +216,7 @@ class ProjectEnvironment:
             self._sense()
         if self.print_log:
             print("[def reset] Banana in position:", self.banana_pose)
-        hist_dict = {"banana_pose": self.banana_pose, "observations": [self.observation_space], "actions": [], "rewards": [], "done": []}
+        hist_dict = {"banana_pose": self.banana_pose, "observations": [self.observation_space], "actions": [], "rewards": [], "done": [], "banana_pred": None, "won": False}
         self.history.append(hist_dict)
         return self.observation_space
 
@@ -199,20 +234,25 @@ class ProjectEnvironment:
                 if self.print_log:
                     print("[DONE] Made correct prediction: guessed", (action-4), ", banana position", self.banana_pose)
                 reward = self.reward_dict['guess_pos']
+                self.history[-1]['won'] = True
+
             else:
                 if self.print_log:
                     print("[DONE] Made wrong prediction: guessed", (action-4), ", banana position", self.banana_pose)
                 reward = self.reward_dict['guess_neg']
+            self.history[-1]['banana_pred'] = action - 4
             done = True
 
         else:
             raise ValueError("Action must be from 0 to 11.")
 
         info_placeholder = {}
+
         self.history[-1]['observations'].append(self.observation_space)
         self.history[-1]['actions'].append(action)
         self.history[-1]['rewards'].append(reward)
         self.history[-1]['done'].append(done)
+
         return self.observation_space, reward, done, info_placeholder
 
 
