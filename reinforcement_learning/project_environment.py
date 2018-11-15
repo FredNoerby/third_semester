@@ -248,6 +248,16 @@ class ProjectEnvironment:
 
         info_placeholder = {}
 
+        # Stop the agent if it dosn't make a prediction in '_max_steps' steps
+        _max_steps = 9
+        if (len(self.history[-1]['actions']) > _max_steps) and (not done):
+            done = True
+            # Extra negative reward for not making a prediction
+            reward = self.reward_dict['guess_neg']
+            # Sets banana prediction to 8 to represent no prediction
+            self.history[-1]['banana_pred'] = 8
+
+
         self.history[-1]['observations'].append(self.observation_space)
         self.history[-1]['actions'].append(action)
         self.history[-1]['rewards'].append(reward)
