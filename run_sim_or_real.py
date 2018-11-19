@@ -6,7 +6,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from robot_control.project_robot import ProjectRobot
-from reinforcement_learning.project_environment import ProjectEnvironment
+#from reinforcement_learning.project_environment import ProjectEnvironment
+
+# USE THIS FOR GENERATING STRUCTERED SCORES IN REAL ENVIRONMENT
+from reinforcement_learning.project_test_environment import ProjectEnvironment
 
 from keras.models import Sequential
 from keras.layers import Dense, Activation, Flatten
@@ -44,7 +47,7 @@ def plot_confusion_matrix(cm, classes,
     plt.yticks(tick_marks, classes)
 
     fmt = '.2f' if normalize else 'd'
-    thresh = cm.max() / 2.
+    thresh = 0.699
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
         plt.text(j, i, format(cm[i, j], fmt),
                  horizontalalignment="center",
@@ -55,6 +58,7 @@ def plot_confusion_matrix(cm, classes,
     plt.tight_layout()
 
 
+"""
 ##################################
 ##################################
 ###-----SIMULATED VERSION------###
@@ -64,7 +68,7 @@ def plot_confusion_matrix(cm, classes,
 ##########################
 ### DQN IMPLEMENTATION ###
 
-ENV_NAME = "DQN"
+ENV_NAME = "SIM_L3_N40"
 
 env = ProjectEnvironment(simulated=True, print_log=False, noise_sigma=30)
 
@@ -74,11 +78,11 @@ print("Number of actions = {}".format(nb_actions))
 # Next, we build a very simple model.
 model = Sequential()
 model.add(Flatten(input_shape=(1,) + env.observation_space.shape))
-model.add(Dense(16))
+model.add(Dense(40))
 model.add(Activation('relu'))
-model.add(Dense(16))
+model.add(Dense(40))
 model.add(Activation('relu'))
-model.add(Dense(16))
+model.add(Dense(40))
 model.add(Activation('relu'))
 model.add(Dense(nb_actions))
 model.add(Activation('linear'))
@@ -90,10 +94,17 @@ memory = SequentialMemory(limit=5000, window_length=1)
 policy = BoltzmannQPolicy()
 dqn = DQNAgent(model=model, nb_actions=nb_actions, memory=memory, nb_steps_warmup=10,
                target_model_update=1e-2, policy=policy)
-
 dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 
-dqn.load_weights('reinforcement_learning/sim_PE_{}_weights181107.h5f'.format(ENV_NAME))
+#### Loading model ####
+dqn.load_weights('reinforcement_learning/dqn_{}_weights_500000.h5f'.format(ENV_NAME))
+
+
+#### FOR TRAINING MODEL ####
+#training_episodes = 500000
+#dqn.fit(env, nb_steps=training_episodes, verbose=2)
+#dqn.save_weights('reinforcement_learning/dqn_{}_weights_500000.h5f'.format(ENV_NAME), overwrite=True)
+
 
 ######################
 episodes = 1000
@@ -116,6 +127,8 @@ for entry in env.history:
 print('Average steps taken:', (total_steps / episodes))
 print('Average reward:', (total_reward / episodes))
 print('Accuracy:', (total_wins / episodes))
+# print(y_true)
+# print(y_pred)
 print('F1 score weighted:', f1_score(y_true, y_pred, average='weighted'))
 
 
@@ -126,15 +139,15 @@ np.set_printoptions(precision=2)
 
 # Plot normalized confusion matrix
 plt.figure()
-plot_confusion_matrix(cnf_matrix, classes=[0, 1, 2, 3, 4, 5, 6, 7], normalize=True,
+plot_confusion_matrix(cnf_matrix, classes=[0, 1, 2, 3, 4, 5, 6, 7, 8], normalize=True,
                       title='Normalized confusion matrix')
 
 plt.show()
 
-env.close()
+env.close()"""
 
 
-"""
+
 
 ###################################
 ###################################
@@ -142,18 +155,18 @@ env.close()
 ###################################
 ###################################
 
-rob = ProjectRobot(acc=0.8, vel=0.8)
+rob = ProjectRobot(acc=1, vel=1)
 
-rob.go_to_random()
+
 
 ##########################
 ### DQN IMPLEMENTATION ###
 
-ENV_NAME = "DQN"
+ENV_NAME = "REAL_PROJ"
 
 # Get the environment and extract the number of actions.
 #env = ProjectEnvironment(print_log=False)
-env = ProjectEnvironment(simulated=False, ProjectRobot=rob, video_cap=0, frozen_graph_path='/home/frederik/AAU_CPH/models/research/object_detection/rcnn_training_folder/exported_graphs/model_october15/frozen_inference_graph.pb')
+env = ProjectEnvironment(banana_pose=6, simulated=False, ProjectRobot=rob, print_log=True, video_cap=0, frozen_graph_path='/home/frederik/AAU_CPH/models/research/object_detection/rcnn_training_folder/exported_graphs/model_october15/frozen_inference_graph.pb')
 # np.random.seed(123)
 # env.seed(123)
 nb_actions = env.action_space.n
@@ -162,11 +175,11 @@ print("Number of actions = {}".format(nb_actions))
 # Next, we build a very simple model.
 model = Sequential()
 model.add(Flatten(input_shape=(1,) + env.observation_space.shape))
-model.add(Dense(16))
+model.add(Dense(40))
 model.add(Activation('relu'))
-model.add(Dense(16))
+model.add(Dense(40))
 model.add(Activation('relu'))
-model.add(Dense(16))
+model.add(Dense(40))
 model.add(Activation('relu'))
 model.add(Dense(nb_actions))
 model.add(Activation('linear'))
@@ -181,10 +194,10 @@ dqn = DQNAgent(model=model, nb_actions=nb_actions, memory=memory, nb_steps_warmu
 
 dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 
-dqn.load_weights('reinforcement_learning/sim_PE_{}_weights181107.h5f'.format(ENV_NAME))
+dqn.load_weights('reinforcement_learning/dqn_SIM_L3_N40_weights_500000.h5f')
 
 ##########################
-episodes = 1000
+episodes = 12
 
 dqn.test(env, nb_episodes=episodes)
 total_reward = 0
@@ -204,21 +217,21 @@ for entry in env.history:
 print('Average steps taken:', (total_steps / episodes))
 print('Average reward:', (total_reward / episodes))
 print('Accuracy:', (total_wins / episodes))
+# print(y_true)
+# print(y_pred)
 print('F1 score weighted:', f1_score(y_true, y_pred, average='weighted'))
 
 
 
 # Compute confusion matrix
-cnf_matrix = confusion_matrix(y_true, y_pred)
+"""cnf_matrix = confusion_matrix(y_true, y_pred)
 np.set_printoptions(precision=2)
 
 # Plot normalized confusion matrix
 plt.figure()
-plot_confusion_matrix(cnf_matrix, classes=[0, 1, 2, 3, 4, 5, 6, 7], normalize=True,
+plot_confusion_matrix(cnf_matrix, classes=[0, 1, 2, 3, 4, 5, 6, 7, 8], normalize=True,
                       title='Normalized confusion matrix')
 
-plt.show()
+plt.show()"""
 
 env.close()
-
-"""
