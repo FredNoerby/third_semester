@@ -133,6 +133,12 @@ class ProjectEnvironment:
                 bbox = [x_offset[0] + mu[0], y_offset[0] + mu[1], x_offset[0] + mu[2], y_offset[0] + mu[3]]
                 self.cache[self.observation_space[0]] = bbox
 
+
+            # Adds a bit of noise to the detection
+            sigma = 2
+            bbox = sigma * np.random.randn(1, 4) + bbox
+            bbox = bbox.tolist()
+            bbox = bbox[0]
             # print("Cache:")
             # print(self.cache)
             self.observation_space = [self.observation_space[0]] + bbox
