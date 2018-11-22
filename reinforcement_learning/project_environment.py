@@ -226,10 +226,11 @@ class ProjectEnvironment:
             ba_p = int(input("**TYPE BANANA POSITION**\n"))
             self.banana_pose = ba_p
             # Robot goes to random start position if none is specified
-            if -1 < robot_position < 12:
-                self.robot.go_to(int(robot_position))
-            else:
+            if robot_position == 'rand':
                 self.robot.go_to_random()
+            elif -1 < robot_position < 12:
+                self.robot.go_to(int(robot_position))
+                
             self.observation_space[0] = self.robot.current_pose
             self._sense()
         if self.print_log:
