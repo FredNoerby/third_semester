@@ -8,7 +8,7 @@ import time
 
 class ProjectEnvironment:
 
-    def __init__(self, simulated=True, ProjectRobot=None, pickled_bbox_dict='reinforcement_learning/bboxsGroundTruth.pkl', frozen_graph_path=None, banana_pose=0, print_log=True, video_cap=0, noise_sigma=30):
+    def __init__(self, simulated=True, ProjectRobot=None, pickled_bbox_dict='reinforcement_learning/bboxsGroundTruth.pkl', frozen_graph_path=None, banana_pose=0, print_log=True, video_cap=0, noise_sigma=30, save_detections=True):
         self.banana_pose = banana_pose
         self.reward_dict = {'move': -1, 'illegal': -5, 'guess_pos': 10, 'guess_neg': -10}
         self.observation_space = np.array([0, 0, 0, 0, 0])
@@ -21,6 +21,7 @@ class ProjectEnvironment:
                 raise ValueError("Need ProjectRobot and frozen_graph_path in non-simulated environment.")
             else:
                 self.robot = ProjectRobot
+                self.save_detections = save_detections
                 self.capture = cv2.VideoCapture(video_cap)
                 self._init_object_detection(frozen_graph_path)
         else:
@@ -112,6 +113,11 @@ class ProjectEnvironment:
                         cv2.rectangle(img, (int(x_min), int(y_min)), (int(x_max), int(y_max)), (125, 255, 51), thickness=2)
                         cv2.putText(img, 'Banana', (int(x_min), int(y_min)), cv2.FONT_HERSHEY_DUPLEX, 1, (125, 255, 51), 1)
                         detected.append([classId, score, [x_min, y_min, x_max, y_max]])
+
+                if self.save_detections:
+                    # Save image with bounding box
+                    cv2.imwrite('detections/b' + str(self.banana_pose) + time.strftime('_%d_%m_%H.%M.%S') + '.png',img)
+
                 return img, detected
 
         else:
