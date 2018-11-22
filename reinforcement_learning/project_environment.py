@@ -144,10 +144,11 @@ class ProjectEnvironment:
             sigma = 2
             bbox = sigma * np.random.randn(1, 4) + bbox
             bbox = bbox.tolist()
-            bbox = bbox[0]
+            bbox = [max(bbox[0][0], 0), max(bbox[0][1], 0), max(bbox[0][2], 0), max(bbox[0][3], 0)]
             # print("Cache:")
             # print(self.cache)
             self.observation_space = [self.observation_space[0]] + bbox
+            # print(self.observation_space)
             
             if self.print_log:
                 print("[def _sense] Observation space:", self.observation_space)
