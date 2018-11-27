@@ -144,7 +144,7 @@ class ProjectEnvironment:
             sigma = 2
             bbox = sigma * np.random.randn(1, 4) + bbox
             bbox = bbox.tolist()
-            bbox = [int(max(bbox[0][0], 0)), int(max(bbox[0][1], 0)), int(max(bbox[0][2], 0)), int(max(bbox[0][3], 0))]
+            bbox = [int(min(max(bbox[0][0], 0), 640)), int(min(max(bbox[0][1], 0), 480)), int(min(max(bbox[0][2], 0), 640)), int(min(max(bbox[0][3], 0), 480))]
             # print("Cache:")
             # print(self.cache)
             self.observation_space = [self.observation_space[0]] + bbox
