@@ -74,6 +74,9 @@ class ProjectRobot:
             elif (self.current_pose == 5 and pose_number == 4) or (self.current_pose == 4 and pose_number == 5):
                 self.robot.movej(self.waypoint2, acc=self.accelaration, vel=self.velocity)
 
+            elif (self.current_pose == 3 and pose_number == 0) or (self.current_pose == 0 and pose_number == 3):
+                self.robot.movej(self.waypoint2, acc=self.accelaration, vel=self.velocity)
+
             elif (self.current_pose == 8 and pose_number == 0) or (self.current_pose == 0 and pose_number == 8):
                 self.robot.movej(self.waypoint2, acc=self.accelaration, vel=self.velocity)
 
