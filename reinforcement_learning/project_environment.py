@@ -8,7 +8,7 @@ import time
 
 class ProjectEnvironment:
 
-    def __init__(self, simulated=True, ProjectRobot=None, pickled_bbox_dict='reinforcement_learning/bboxsGroundTruth.pkl', frozen_graph_path=None, banana_pose=0, print_log=True, video_cap=0, noise_sigma=30, save_detections=True):
+    def __init__(self, simulated=True, ProjectRobot=None, pickled_bbox_dict='reinforcement_learning/bboxsXmlExtractorSTD.pkl', frozen_graph_path=None, banana_pose=0, print_log=True, video_cap=0, save_detections=True):
         self.banana_pose = banana_pose
         self.reward_dict = {'move': -1, 'illegal': -5, 'guess_pos': 10, 'guess_neg': -10}
         self.observation_space = np.array([0, 0, 0, 0, 0])
@@ -25,7 +25,6 @@ class ProjectEnvironment:
                 self.capture = cv2.VideoCapture(video_cap)
                 self._init_object_detection(frozen_graph_path)
         else:
-            self.sigma = noise_sigma
             self.cache = {0: None, 
                           1: None,
                           2: None, 
@@ -133,10 +132,23 @@ class ProjectEnvironment:
                 bbox = self.cache[self.observation_space[0]]
             # Else generate one
             else:
-                mu = np.array(self.simulated_bboxs[self.banana_pose][self.observation_space[0]])
-                x_offset = self.sigma * np.random.randn(1)
-                y_offset = self.sigma * np.random.randn(1)
-                bbox = [x_offset[0] + mu[0], y_offset[0] + mu[1], x_offset[0] + mu[2], y_offset[0] + mu[3]]
+                xmin_mu = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][0][0]
+                ymin_mu = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][1][0]
+                xmax_mu = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][2][0]
+                ymax_mu = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][3][0]
+
+                xmin_sigma = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][0][1]
+                ymin_sigma = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][1][1]
+                xmax_sigma = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][2][1]
+                ymax_sigma = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][3][1]
+
+                xmin_offset = np.random.normal(xmin_mu, xmin_sigma)
+                ymin_offset = np.random.normal(ymin_mu, ymin_sigma) 
+                xmax_offset = np.random.normal(xmax_mu, xmax_sigma)
+                ymax_offset = np.random.normal(ymax_mu, ymax_sigma)
+
+                bbox = [xmin_offset, ymin_offset, xmax_offset, ymax_offset]
+                #print(bbox)
                 self.cache[self.observation_space[0]] = bbox
 
 
