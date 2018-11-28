@@ -8,7 +8,7 @@ import time
 
 class ProjectEnvironment:
 
-    def __init__(self, simulated=True, ProjectRobot=None, pickled_bbox_dict='reinforcement_learning/bboxsXmlExtractorSTD.pkl', frozen_graph_path=None, banana_pose=0, print_log=True, video_cap=0, save_detections=True):
+    def __init__(self, simulated=True, ProjectRobot=None, incremental_robot_positions=False ,pickled_bbox_dict='reinforcement_learning/bboxsXmlExtractorSTD.pkl', frozen_graph_path=None, banana_pose=0, robot_pose_start=0, print_log=True, video_cap=0, save_detections=True):
         self.banana_pose = banana_pose
         self.reward_dict = {'move': -1, 'illegal': -5, 'guess_pos': 10, 'guess_neg': -10}
         self.observation_space = np.array([0, 0, 0, 0, 0])
@@ -22,6 +22,11 @@ class ProjectEnvironment:
             else:
                 self.robot = ProjectRobot
                 self.save_detections = save_detections
+                self.incremental_robot_positions = incremental_robot_positions
+                if self.incremental_robot_positions:
+                    self.internal_counter = robot_pose_start
+                    self.y_true = []
+                    self.y_pred = []
                 self.capture = cv2.VideoCapture(video_cap)
                 self._init_object_detection(frozen_graph_path)
         else:
@@ -235,14 +240,25 @@ class ProjectEnvironment:
             self._sense()
 
         else:
-            ba_p = int(input("**TYPE BANANA POSITION**\n"))
-            self.banana_pose = ba_p
-            # Robot goes to random start position if none is specified
-            if robot_position == 'rand':
-                self.robot.go_to_random()
-            elif -1 < robot_position < 12:
-                self.robot.go_to(int(robot_position))
-                
+            if self.incremental_robot_positions:
+                # Set internal counter to 0 if it is 12
+                if self.internal_counter > 11:
+                    self.internal_counter = 0
+                    ba_p = input("**CHANGE BANANA POSITION**\n")
+                    self.banana_pose += 1
+                # Move robot to start position
+                self.robot.go_to(self.internal_counter)
+                self.internal_counter += 1
+
+            else:
+                ba_p = int(input("**TYPE BANANA POSITION**\n"))
+                self.banana_pose = ba_p
+                # Robot goes to random start position if none is specified
+                if robot_position == 'rand':
+                    self.robot.go_to_random()
+                elif -1 < robot_position < 12:
+                    self.robot.go_to(int(robot_position))
+                    
             self.observation_space[0] = self.robot.current_pose
             self._sense()
         if self.print_log:
@@ -255,6 +271,7 @@ class ProjectEnvironment:
     def step(self, action):
         """ Takes a step based on an action
         """
+
         done = False
         if -1 < action < 4:
             rew = self._move(action)
@@ -272,6 +289,9 @@ class ProjectEnvironment:
                     print("[DONE] Made wrong prediction: guessed", (action-4), ", banana position", self.banana_pose)
                 reward = self.reward_dict['guess_neg']
             self.history[-1]['banana_pred'] = action - 4
+            if self.incremental_robot_positions:
+                    self.y_true.append(self.history[-1]['banana_pose'])
+                    self.y_pred.append(self.history[-1]['banana_pred'])
             done = True
 
         else:
@@ -287,12 +307,21 @@ class ProjectEnvironment:
             reward = self.reward_dict['guess_neg']
             # Sets banana prediction to 8 to represent no prediction
             self.history[-1]['banana_pred'] = 8
+            if self.incremental_robot_positions:
+                    self.y_true.append(self.history[-1]['banana_pose'])
+                    self.y_pred.append(self.history[-1]['banana_pred'])
 
 
         self.history[-1]['observations'].append(self.observation_space)
         self.history[-1]['actions'].append(action)
         self.history[-1]['rewards'].append(reward)
         self.history[-1]['done'].append(done)
+
+        if done == True and self.incremental_robot_positions == True:
+            print('TRUE:')
+            print(self.y_true)
+            print('PRED:')
+            print(self.y_pred)
 
         return self.observation_space, reward, done, info_placeholder
 
