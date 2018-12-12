@@ -8,21 +8,23 @@ import time
 
 class ProjectEnvironment:
 
-    def __init__(self, simulated=True, ProjectRobot=None, incremental_robot_positions=False ,pickled_bbox_dict='reinforcement_learning/bboxsXmlExtractorSTD.pkl', frozen_graph_path=None, banana_pose=0, robot_pose_start=0, print_log=True, video_cap=0, save_detections=True):
+    def __init__(self, simulated=True, ProjectRobot=None, occlusions=False, incremental_robot_positions=False, pickled_bbox_dict='reinforcement_learning/bboxsXmlExtractorSTD.pkl', frozen_graph_path=None, banana_pose=0, robot_pose_start=0, print_log=True, video_cap=0, save_detections=True):
         self.banana_pose = banana_pose
         self.reward_dict = {'move': -1, 'illegal': -5, 'guess_pos': 10, 'guess_neg': -10}
         self.observation_space = np.array([0, 0, 0, 0, 0])
         self.action_space = ActionSpace(12)
         self.history = []
         self.simulated = simulated
+        self.occlu = occlusions
         self.print_log = print_log
+        self.incremental_robot_positions = incremental_robot_positions
         if not self.simulated:
             if not ProjectRobot or not frozen_graph_path:
                 raise ValueError("Need ProjectRobot and frozen_graph_path in non-simulated environment.")
             else:
                 self.robot = ProjectRobot
                 self.save_detections = save_detections
-                self.incremental_robot_positions = incremental_robot_positions
+                
                 if self.incremental_robot_positions:
                     self.internal_counter = robot_pose_start
                     self.y_true = []
@@ -131,51 +133,66 @@ class ProjectEnvironment:
     def _sense(self):
         """ Updates the bounding boxes 
         """
-        if self.simulated:
-            # If camera has already detected here reuse simulated detection
-            if self.cache[self.observation_space[0]]:
-                bbox = self.cache[self.observation_space[0]]
-            # Else generate one
-            else:
-                xmin_mu = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][0][0]
-                ymin_mu = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][1][0]
-                xmax_mu = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][2][0]
-                ymax_mu = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][3][0]
-
-                xmin_sigma = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][0][1]
-                ymin_sigma = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][1][1]
-                xmax_sigma = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][2][1]
-                ymax_sigma = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][3][1]
-
-                xmin_offset = np.random.normal(xmin_mu, xmin_sigma)
-                ymin_offset = np.random.normal(ymin_mu, ymin_sigma) 
-                xmax_offset = np.random.normal(xmax_mu, xmax_sigma)
-                ymax_offset = np.random.normal(ymax_mu, ymax_sigma)
-
-                bbox = [xmin_offset, ymin_offset, xmax_offset, ymax_offset]
-                #print(bbox)
-                self.cache[self.observation_space[0]] = bbox
-
-
-            # Adds a bit of noise to the detection
-            sigma = 2
-            bbox = sigma * np.random.randn(1, 4) + bbox
-            bbox = bbox.tolist()
-            bbox = [int(min(max(bbox[0][0], 0), 640)), int(min(max(bbox[0][1], 0), 480)), int(min(max(bbox[0][2], 0), 640)), int(min(max(bbox[0][3], 0), 480))]
-            # print("Cache:")
-            # print(self.cache)
-            self.observation_space = [self.observation_space[0]] + bbox
-            # print(self.observation_space)
-            
-            if self.print_log:
-                print("[def _sense] Observation space:", self.observation_space)
+        if self.occlu:
+            choice_int = 1
         else:
-            img, detected = self.detect_image()
-            xmin, ymin = detected[0][2][0], detected[0][2][1]
-            xmax, ymax = detected[0][2][2], detected[0][2][3]
-            self.observation_space = [self.observation_space[0]] + [int(xmin), int(ymin), int(xmax), int(ymax)]
-            if self.print_log:
-                print("[def _sense] Observation space:", self.observation_space)
+            choice_int = 9
+
+        no_obs_chance = np.random.choice(4)
+
+        if no_obs_chance == choice_int:
+            # The observation yields no bounding box
+            self.observation_space = [self.observation_space[0]] + [0, 0, 0, 0]
+
+            self.history[-1]['occlusions'] += 1
+
+        else:
+            # Get an observation
+            if self.simulated:
+                # If camera has already detected here reuse simulated detection
+                if self.cache[self.observation_space[0]]:
+                    bbox = self.cache[self.observation_space[0]]
+                # Else generate one
+                else:
+                    xmin_mu = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][0][0]
+                    ymin_mu = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][1][0]
+                    xmax_mu = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][2][0]
+                    ymax_mu = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][3][0]
+
+                    xmin_sigma = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][0][1]
+                    ymin_sigma = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][1][1]
+                    xmax_sigma = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][2][1]
+                    ymax_sigma = self.simulated_bboxs[self.banana_pose][self.observation_space[0]][3][1]
+
+                    xmin_offset = np.random.normal(xmin_mu, xmin_sigma)
+                    ymin_offset = np.random.normal(ymin_mu, ymin_sigma) 
+                    xmax_offset = np.random.normal(xmax_mu, xmax_sigma)
+                    ymax_offset = np.random.normal(ymax_mu, ymax_sigma)
+
+                    bbox = [xmin_offset, ymin_offset, xmax_offset, ymax_offset]
+                    #print(bbox)
+                    self.cache[self.observation_space[0]] = bbox
+
+
+                # Adds a bit of noise to the detection
+                sigma = 2
+                bbox = sigma * np.random.randn(1, 4) + bbox
+                bbox = bbox.tolist()
+                bbox = [int(min(max(bbox[0][0], 0), 640)), int(min(max(bbox[0][1], 0), 480)), int(min(max(bbox[0][2], 0), 640)), int(min(max(bbox[0][3], 0), 480))]
+                # print("Cache:")
+                # print(self.cache)
+                self.observation_space = [self.observation_space[0]] + bbox
+                # print(self.observation_space)
+                
+                if self.print_log:
+                    print("[def _sense] Observation space:", self.observation_space)
+            else:
+                img, detected = self.detect_image()
+                xmin, ymin = detected[0][2][0], detected[0][2][1]
+                xmax, ymax = detected[0][2][2], detected[0][2][3]
+                self.observation_space = [self.observation_space[0]] + [int(xmin), int(ymin), int(xmax), int(ymax)]
+                if self.print_log:
+                    print("[def _sense] Observation space:", self.observation_space)
 
 
 
@@ -263,7 +280,7 @@ class ProjectEnvironment:
             self._sense()
         if self.print_log:
             print("[def reset] Banana in position:", self.banana_pose)
-        hist_dict = {"banana_pose": self.banana_pose, "observations": [self.observation_space], "actions": [], "rewards": [], "done": [], "banana_pred": None, "won": False}
+        hist_dict = {"banana_pose": self.banana_pose, "observations": [self.observation_space], "actions": [], "rewards": [], "done": [], "banana_pred": None, "won": False, "occlusions": 0}
         self.history.append(hist_dict)
         return self.observation_space
 
