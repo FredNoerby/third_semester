@@ -8,7 +8,7 @@ import time
 
 class ProjectEnvironment:
 
-    def __init__(self, simulated=True, ProjectRobot=None, occlusions=False, incremental_robot_positions=False, pickled_bbox_dict='reinforcement_learning/bboxsXmlExtractorSTD.pkl', frozen_graph_path=None, banana_pose=0, robot_pose_start=0, print_log=True, video_cap=0, save_detections=True):
+    def __init__(self, simulated=True, ProjectRobot=None, occlusions=False, manual_occlusion=False, incremental_robot_positions=False, pickled_bbox_dict='reinforcement_learning/bboxsXmlExtractorSTD.pkl', frozen_graph_path=None, banana_pose=0, robot_pose_start=0, print_log=True, video_cap=0, save_detections=True):
         self.banana_pose = banana_pose
         self.reward_dict = {'move': -1, 'illegal': -5, 'guess_pos': 10, 'guess_neg': -10}
         self.observation_space = np.array([0, 0, 0, 0, 0])
@@ -16,6 +16,7 @@ class ProjectEnvironment:
         self.history = []
         self.simulated = simulated
         self.occlu = occlusions
+        self.manual_occlusion = manual_occlusion
         self.print_log = print_log
         self.incremental_robot_positions = incremental_robot_positions
         if not self.simulated:
@@ -140,11 +141,17 @@ class ProjectEnvironment:
 
         no_obs_chance = np.random.choice(4)
 
-        if no_obs_chance == choice_int:
+        user_occlude = 'n'
+
+        if self.manual_occlusion:
+            user_occlude = input("Make occlusion?\n")
+
+
+        if no_obs_chance == choice_int or user_occlude.lower() == "y":
             # The observation yields no bounding box
             self.observation_space = [self.observation_space[0]] + [0, 0, 0, 0]
-
-            self.history[-1]['occlusions'] += 1
+            if self.print_log:
+                    print("[def _sense] Observation space:", self.observation_space)
 
         else:
             # Get an observation
@@ -280,7 +287,13 @@ class ProjectEnvironment:
             self._sense()
         if self.print_log:
             print("[def reset] Banana in position:", self.banana_pose)
-        hist_dict = {"banana_pose": self.banana_pose, "observations": [self.observation_space], "actions": [], "rewards": [], "done": [], "banana_pred": None, "won": False, "occlusions": 0}
+
+        occs = 0
+
+        if self.observation_space[1] == 0 and self.observation_space[2] == 0 and self.observation_space[3] == 0 and self.observation_space[4] == 0:
+            occs += 1
+
+        hist_dict = {"banana_pose": self.banana_pose, "observations": [self.observation_space], "actions": [], "rewards": [], "done": [], "banana_pred": None, "won": False, "occlusions": occs}
         self.history.append(hist_dict)
         return self.observation_space
 
@@ -333,6 +346,9 @@ class ProjectEnvironment:
         self.history[-1]['actions'].append(action)
         self.history[-1]['rewards'].append(reward)
         self.history[-1]['done'].append(done)
+
+        if self.observation_space[1] == 0 and self.observation_space[2] == 0 and self.observation_space[3] == 0 and self.observation_space[4] == 0:
+            self.history[-1]['occlusions'] += 1
 
         if done == True and self.incremental_robot_positions == True:
             print('TRUE:')
